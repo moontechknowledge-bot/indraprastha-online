@@ -3,12 +3,11 @@
   publish = "dist"
 
 [functions]
-  node_runtime = "nodejs18.x"
-  directory = "server" # Ye aapke server.ts ko function ki tarah chalayega
+  directory = "netlify/functions"
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/server/:splat"
+  to = "/.netlify/functions/api/:splat"
   status = 200
 
 [[redirects]]
