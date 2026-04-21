@@ -1,11 +1,14 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
+
+[functions]
+  node_runtime = "nodejs18.x"
+  directory = "server" # Ye aapke server.ts ko function ki tarah chalayega
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  to = "/.netlify/functions/server/:splat"
   status = 200
 
 [[redirects]]
