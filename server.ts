@@ -1,11 +1,12 @@
-// server.ts - Final Vercel Optimized (No more crashes)
 import 'dotenv/config'; 
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
 
-// Imports (Extensions are needed for ESM)
+// Database Import
 import { pool } from './server/lib/db.js';
+
+// Route Imports (SAB ME .js LAGA HAI AUR YEHI SAHI HAI KYUNKI package.json MODULE HAI)
 import authRoutes from './server/routes/authRoutes.js';
 import businessRoutes from './server/routes/businessRoutes.js';
 import productRoutes from './server/routes/productRoutes.js';
@@ -20,25 +21,25 @@ import usedItemRoutes from './server/routes/usedItemRoutes.js';
 import { getAllCategories } from './server/controllers/adminController.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cors());
 
-// Health Check - Pehle ise check karenge
-app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'Indraprastha Server is Live!' }));
+// Health Check (Zaroori hai test karne ke liye)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', msg: 'Indraprastha Server is LIVE!', time: new Date().toISOString() });
+});
 
-// Manual DB Init (Only run this when needed)
+// Manual DB Init Route (Sirf manual call par chalega)
 app.get('/api/init-db', async (req, res) => {
   try {
-    console.log('Manual Init: Starting...');
     await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-    await pool.query(`CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL, google_id VARCHAR(255) UNIQUE, full_name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    // Note: Saari tables auth/business routes me apne aap bhi handle ho jati hain
-    res.json({ success: true, message: 'Database initialized successfully' });
+    await pool.query('CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL, google_id VARCHAR(255) UNIQUE, full_name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
+    res.json({ success: true, message: 'DB setup triggered successfully' });
   } catch (err) {
-    res.status(500).json({ error: 'Init failed', details: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: String(err) });
   }
 });
 
@@ -56,15 +57,22 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/used-items', usedItemRoutes);
 app.get('/api/categories', getAllCategories);
 
-// Serve Static Files only if NOT on Vercel (Vercel handles this via rewrites)
-if (!process.env.VERCEL) {
-  const __dirname = path.resolve();
-  app.use(express.static(path.join(__dirname, 'dist')));
-  app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'dist/index.html')));
+// Serve static files from dist
+const __dirname = path.resolve();
+app.use(express.static(path.join(__dirname, 'dist')));
 
+// SPA fallback for frontend
+app.get(/^(?!\/api).+/, (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist/index.html'));
+});
+
+// Export for Vercel
+export default app;
+
+// Local listening (Sirf apne PC par chalane ke liye)
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server: http://localhost:${PORT}`);
   });
 }
-
-export default app;
