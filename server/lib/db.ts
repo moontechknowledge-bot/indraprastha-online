@@ -1,36 +1,33 @@
-// server/lib/db.ts - Ready for Vercel (No Heartbeat)
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
+// server/lib/db.ts - Ready for Vercel (HTTP Mode)
+import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg'; // Standard Postgres pool for local/fallback
 
-// Neon Database handles SSL automatically via WebSocket driver
-neonConfig.webSocketConstructor = ws;
+const databaseUrl = (process.env.DATABASE_URL || '').trim();
 
-const rawUrl = (process.env.DATABASE_URL || '').trim();
-
-if (!rawUrl) {
-  console.error('[DB FATAL] DATABASE_URL is not defined in environment variables!');
+if (!databaseUrl) {
+  console.error('[DB FATAL] DATABASE_URL is missing!');
 }
 
-// Removing unnecessary parameters for cleaner connection
-const databaseUrl = rawUrl
-  .replace(/([?&])channel_binding=[^&]*/g, '$1')
-  .replace(/([?&])sslmode=[^&]*/g, '$1')
-  .replace(/\?&/g, '?')
-  .replace(/&&+/g, '&')
-  .replace(/[?&]$/g, '');
+// 1. Neon HTTP Client (Vercel ke liye Best aur Fast)
+const sql = neon(databaseUrl);
 
+// 2. Postgres Pool (Local Dev ke liye)
 export const pool = new Pool({
   connectionString: databaseUrl,
-  connectionTimeoutMillis: 10000, // 10 seconds timeout
 });
 
-pool.on('error', (err) => {
-  console.error('[DB Pool Error]', err);
-});
-
-// Helper for simplified queries
+/**
+ * Scalable query function: Vercel par HTTP use karega, Local par Pool.
+ */
 export async function query<T = any>(text: string, params: any[] = []): Promise<T[]> {
   try {
+    // Agar Vercel par hain, toh direct HTTP query karein (Isse WebSocket error nahi aayega)
+    if (process.env.VERCEL) {
+      const result = await sql(text, params);
+      return result as T[];
+    }
+    
+    // Local par standard Pool use karein
     const result = await pool.query(text, params);
     return result.rows as T[];
   } catch (error) {

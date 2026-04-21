@@ -11,7 +11,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 import { GlobalAuthGuard } from './components/GlobalAuthGuard';
 
-// Lazy load non-critical pages
+// Lazy load imports (Spellings wahi hain jo aapke explorer me hain)
 const FounderDashboard = lazy(() => import('./pages/FounderDashboard').then(m => ({ default: m.FounderDashboard })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const DashboardLayout = lazy(() => import('./components/DashboardLayout'));
@@ -35,9 +35,8 @@ const GauSeva = lazy(() => import('./pages/GauSeva'));
 const Plans = lazy(() => import('./pages/Plans').then(m => ({ default: m.Plans })));
 const Marketplace = lazy(() => import('./pages/Marketplace').then(m => ({ default: m.Marketplace })));
 
-const GOOGLE_CLIENT_ID = "366702757456-6g8uqn2e4g49iuefill75gusap6naig0.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "366702757456-6g8uqn2e4g49iuefill75gusap6naig0.apps.googleusercontent.com";
 
-// Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
     <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -61,7 +60,6 @@ function App() {
                 <Route path="/founder" element={<ProtectedRoute><FounderDashboard /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
                 
-                {/* Footer Pages */}
                 <Route path="/about" element={<AboutUs />} />
                 <Route path="/contact" element={<ContactUs />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -70,11 +68,8 @@ function App() {
                 <Route path="/gau-seva" element={<GauSeva />} />
                 <Route path="/plans" element={<Navigate to="/onboarding" replace />} />
                 <Route path="/marketplace" element={<Marketplace />} />
-                
-                {/* Specific Dashboard and System Routes first */}
                 <Route path="/buyer-dashboard" element={<ProtectedRoute><BuyerDashboard /></ProtectedRoute>} />
                 
-                {/* Dashboard Routes with individual components */}
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><Overview /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/dashboard/my-businesses" element={<ProtectedRoute><DashboardLayout><MyBusinesses /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/dashboard/leads" element={<ProtectedRoute><DashboardLayout><Leads /></DashboardLayout></ProtectedRoute>} />
@@ -86,7 +81,6 @@ function App() {
                 <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
                 <Route path="/dashboard/help" element={<ProtectedRoute><DashboardLayout><Help /></DashboardLayout></ProtectedRoute>} />
                 
-                {/* General catch-all id routes last */}
                 <Route path="/:id" element={<BusinessDetails />} />
               </Routes>
             </Suspense>
