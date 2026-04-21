@@ -1,38 +1,50 @@
-// server.ts - Final Type-Safe Vercel Code
+// server.ts - Bulletproof Vercel Version
 import 'dotenv/config'; 
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import path from 'path';
 import cors from 'cors';
 
-// Database Import
-import { pool } from './server/lib/db.js';
+// Database Import (Bina .js ke)
+import { pool } from './server/lib/db'; 
 
-// Route Imports
-import authRoutes from './server/routes/authRoutes.js';
-import businessRoutes from './server/routes/businessRoutes.js';
-import productRoutes from './server/routes/productRoutes.js';
-import adminRoutes from './server/routes/adminRoutes.js';
-import paymentRoutes from './server/routes/paymentRoutes.js';
-import leadRoutes from './server/routes/leadRoutes.js';
-import businessLinkRoutes from './server/routes/businessLinkRoutes.js';
-import sellerRoutes from './server/routes/sellerRoutes.js';
-import reviewRoutes from './server/routes/reviewRoutes.js';
-import favoriteRoutes from './server/routes/favoriteRoutes.js';
-import usedItemRoutes from './server/routes/usedItemRoutes.js';
-import { getAllCategories } from './server/controllers/adminController.js';
+// Route Imports (SAB ME SE .js HATA DIYA HAI)
+import authRoutes from './server/routes/authRoutes';
+import businessRoutes from './server/routes/businessRoutes';
+import productRoutes from './server/routes/productRoutes';
+import adminRoutes from './server/routes/adminRoutes';
+import paymentRoutes from './server/routes/paymentRoutes';
+import leadRoutes from './server/routes/leadRoutes';
+import businessLinkRoutes from './server/routes/businessLinkRoutes';
+import sellerRoutes from './server/routes/sellerRoutes';
+import reviewRoutes from './server/routes/reviewRoutes';
+import favoriteRoutes from './server/routes/favoriteRoutes';
+import usedItemRoutes from './server/routes/usedItemRoutes';
+import { getAllCategories } from './server/controllers/adminController';
 
 const app = express();
-
-// PORT ko fix karein (Type Error hatane ke liye)
-const PORT: number = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cors());
 
-// Health Check
+// Health Check (Zaroori hai test karne ke liye)
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', msg: 'Indraprastha Server is LIVE!', time: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    msg: 'Indraprastha Server is LIVE!', 
+    time: new Date().toISOString() 
+  });
+});
+
+// Manual DB Init Route
+app.get('/api/init-db', async (req: Request, res: Response) => {
+  try {
+    await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    await pool.query('CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
+    res.json({ success: true, message: 'DB setup triggered' });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 // Routes
@@ -52,9 +64,8 @@ app.get('/api/categories', getAllCategories as any);
 // Export for Vercel
 export default app;
 
-// Local only
+// Local listening (Sirf apne PC par chalega)
 if (!process.env.VERCEL) {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server: http://localhost:${PORT}`);
-  });
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Local: http://localhost:${PORT}`));
 }
