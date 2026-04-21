@@ -1,11 +1,13 @@
-import 'dotenv/config'; 
+import 'dotenv/config';
 import express from 'express';
+import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import cors from 'cors';
 
-// Imports with mandatory .js extensions for ESM
+// Database Import
 import { pool } from './server/lib/db.js';
-import authRoutes from './server/routes/authRoutes.js';
+
+// Route Imports
 import businessRoutes from './server/routes/businessRoutes.js';
 import productRoutes from './server/routes/productRoutes.js';
 import adminRoutes from './server/routes/adminRoutes.js';
@@ -16,16 +18,54 @@ import sellerRoutes from './server/routes/sellerRoutes.js';
 import reviewRoutes from './server/routes/reviewRoutes.js';
 import favoriteRoutes from './server/routes/favoriteRoutes.js';
 import usedItemRoutes from './server/routes/usedItemRoutes.js';
+import authRoutes from './server/routes/authRoutes.js';
+import { getAllCategories } from './server/controllers/adminController.js';
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
+// Render automatically gives a PORT, local will use 3005
+const PORT = process.env.PORT || 3005;
+
+// Middleware
+app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
-// Health Check
-app.get('/api/health', (req, res) => res.json({ status: 'ok', msg: 'Indraprastha Ready' }));
+// --- Database Init (Creates tables on first run) ---
+async function initDb() {
+  console.log('🔄 Initializing Database Tables...');
+  try {
+    await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
+        email VARCHAR(255) UNIQUE NOT NULL, 
+        full_name VARCHAR(255), 
+        role VARCHAR(50) DEFAULT 'buyer', 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY, 
+        name TEXT NOT NULL, 
+        slug TEXT UNIQUE NOT NULL, 
+        icon TEXT, 
+        order_index INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS businesses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
+        name VARCHAR(255) NOT NULL, 
+        city VARCHAR(100) NOT NULL, 
+        status TEXT DEFAULT 'pending', 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✅ Database Ready!');
+  } catch (err) {
+    console.error('❌ Database Init Error:', err);
+  }
+}
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/categories', getAllCategories);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin', adminRoutes);
@@ -37,14 +77,37 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/used-items', usedItemRoutes);
 
-// Database Init
-app.get('/api/init-db', async (req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    res.json({ success: true, message: 'DB Connected' });
-  } catch (err) {
-    res.status(500).json({ error: String(err) });
-  }
+// Error Handler
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('SERVER ERROR:', err);
+  res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
 
-export default app;
+async function startServer() {
+  await initDb();
+
+  // Logic for Render (Production) vs Local (Dev)
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { 
+        middlewareMode: true,
+        hmr: { port: 3006 }
+      },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const __dirname = path.resolve();
+    const distPath = path.join(__dirname, 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
+
+startServer();

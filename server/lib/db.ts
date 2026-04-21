@@ -1,39 +1,24 @@
-// server/lib/db.ts - Ready for Vercel (HTTP Mode)
-import { neon } from '@neondatabase/serverless';
-import { Pool } from 'pg'; // Standard Postgres pool for local/fallback
+import 'dotenv/config';
+import pg from 'pg';
+const { Pool } = pg;
 
-const databaseUrl = (process.env.DATABASE_URL || '').trim();
+const rawUrl = (process.env.DATABASE_URL || '').trim();
 
-if (!databaseUrl) {
-  console.error('[DB FATAL] DATABASE_URL is missing!');
-}
-
-// 1. Neon HTTP Client (Vercel ke liye Best aur Fast)
-const sql = neon(databaseUrl);
-
-// 2. Postgres Pool (Local Dev ke liye)
 export const pool = new Pool({
-  connectionString: databaseUrl,
+  connectionString: rawUrl,
+  ssl: rawUrl.includes('neon.tech') ? { rejectUnauthorized: false } : false
 });
 
-/**
- * Scalable query function: Vercel par HTTP use karega, Local par Pool.
- */
 export async function query<T = any>(text: string, params: any[] = []): Promise<T[]> {
+  const client = await pool.connect();
   try {
-    // Agar Vercel par hain, toh direct HTTP query karein (Isse WebSocket error nahi aayega)
-    if (process.env.VERCEL) {
-      const result = await sql(text, params);
-      return result as T[];
-    }
-    
-    // Local par standard Pool use karein
-    const result = await pool.query(text, params);
+    const result = await client.query(text, params);
     return result.rows as T[];
-  } catch (error) {
-    console.error('[DB Error]', error instanceof Error ? error.message : String(error));
-    throw error;
+  } finally {
+    client.release();
   }
 }
 
-export default pool;
+export function isValidUUID(uuid: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+}
